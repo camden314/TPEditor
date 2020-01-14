@@ -1,2 +1,2 @@
 # TPEditor
-geometry dash texture pack editor
+A Geometry Dash Texture Pack Editor
