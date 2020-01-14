@@ -39,7 +39,7 @@ kv_script = """#:kivy 1.11.1
 	BoxLayout:
 		orientation: "vertical"
 		FileChooserListView:
-			path: "/Users/jakrillis/Projects/texturepackgui/tests/"
+			path: expanduser("~")
 			filters: [self.parent.parent.parent.parent.is_png]
 			id: filechooser
 
@@ -165,9 +165,6 @@ TPScreen:
 
 """
 
-
-
-
 import kivy
 kivy.require('1.11.1')
 from kivy.app import App
@@ -184,7 +181,6 @@ from kivy.uix.button import Button
 from kivy.uix.textinput import TextInput
 from kivy.uix.filechooser import FileChooser
 from kivy.properties import ObjectProperty, StringProperty
-import time
 from kivy.lang import Builder
 
 import plistlib
@@ -198,7 +194,9 @@ import sys, traceback
 
 class RoundTextInput(TextInput):
 	pass
+
 class FileChoosePopup(Popup):
+
 	def has_plist(self,directory,file):
 		if file.endswith('.png'):
 			if os.path.exists(file.replace('.png','.plist')):
@@ -207,11 +205,13 @@ class FileChoosePopup(Popup):
 				return False
 		else:
 			return False
+
 	def is_png(self,directory,file):
 		if file.endswith('.png'):
 			return True 
 		else:
 			return False
+
 	load = ObjectProperty()
 class FileSavePopup(Popup):
 	def is_png(self,directory,file):
@@ -219,27 +219,30 @@ class FileSavePopup(Popup):
 			return True 
 		else:
 			return False
+
 	save = ObjectProperty()
 class GDTexture(Button):
 
 	def fileOpenCallback(self,sel):
 		print(self.imageName)
+
 		self.filepopup.dismiss()
 		oldSize = self.imageData.size
-		print(oldSize)
+
 		self.imageData = PilImage.open(sel[0]).resize(oldSize,PilImage.ANTIALIAS)
 		self.reloadImage()
 		self.parent.textures[self.imageName][0] = self.imageData
+
 	def changeTexture(self):
 		self.filepopup = FileChoosePopup(load=self.fileOpenCallback)
 		self.filepopup.open()
 	
 	def reloadImage(self):
 		imageobject = io.BytesIO()
-
 		imgdata2 = self.imageData.copy()
 		imgdata2.thumbnail((80,80),PilImage.ANTIALIAS)
 		imgdata2.save(imageobject,format='png')
+
 		imageobject.seek(0)
 		self.ids.textureIMG.texture = CoreImage(imageobject, ext='png').texture
 	
@@ -247,13 +250,16 @@ class GDTexture(Button):
 		self.imageName = imgName
 		self.imageData = imgData
 		self.reloadImage()
+
 	def on_press(self):
 		self.changeTexture()
+
 class TextureBox(StackLayout):
 	def __init__(self,**kwargs):
 		super().__init__(**kwargs)
 		self.textures = {}
 		self.tpSize = (0,0)
+
 	def addImage(self,imgName,imgData,rotated,pos,new=True):
 		if new:
 			self.textures[imgName] = [imgData,rotated,pos]
@@ -261,24 +267,33 @@ class TextureBox(StackLayout):
 		texture.loadTexture(imgName,imgData)
 		texture.reloadImage()
 
-		#texture.size = (60,60)
 		self.add_widget(texture)
+
 	def filter(self,textFilter):
 		self.clear_widgets()
 		for key in self.textures:
 			if textFilter.lower() in key.lower():
 				obj = self.textures[key]
 				self.addImage(key,obj[0],obj[1],obj[2],new=False)
+
 	def generateTPPng(self):
 		base = PilImage.new('RGBA',self.tpSize)
+
 		for key in self.textures:
 			obj = self.textures[key]
 			textureImage = obj[0]
 			if obj[1]:
 				textureImage = textureImage.rotate(-90,expand=True)
 			base.paste(textureImage,obj[2])
+
 		return base
+
 class TPScreen(FloatLayout):
+	def __init__(self, **kwargs):
+		super().__init__()
+		self.choosePath = os.path.expanduser("~")
+		self.plistLocation = self.pngLocation = None
+
 	def getTextures(self):
 		png = PilImage.open(self.pngLocation)
 		pngWidth, pngHeight = self.ids.tp_box.tpSize = png.size
@@ -293,6 +308,7 @@ class TPScreen(FloatLayout):
 		_loads = orjson.loads
 		_addImage = self.ids.tp_box.addImage
 		_crop = png.crop
+
 		for key in plist:
 			obj = plist[key]
 			lists = _loads(obj['textureRect'])
@@ -307,50 +323,38 @@ class TPScreen(FloatLayout):
 				objectPng = _crop((pos_left,pos_top,pos_left+width,pos_top+height))
 
 			_addImage(key,objectPng,obj['textureRotated'],(pos_left,pos_top))
+
 	def fileOpenCallback(self,sel):
-		print(sel)
 		self.pngLocation = sel[0]
 		self.plistLocation = sel[0].replace('png','plist')
 		self.filepopup.dismiss()
 		self.getTextures()
 		self.choosePath = os.path.dirname(sel[0])
+
 	def openFileChoose(self):
 		self.filepopup = FileChoosePopup(load=self.fileOpenCallback)
 		self.filepopup.ids.filechooser.path = self.choosePath
 		self.filepopup.ids.filechooser.filters = [self.filepopup.has_plist]
 		self.filepopup.open()
+
 	def saveFileCallback(self,sel):
 		self.savepopup.dismiss()
 		if not sel.endswith('.png'):
 			sel+='.png'
-		print(sel)
 		self.ids.tp_box.generateTPPng().save(sel,'PNG')
+
 	def exportFile(self):
 		if self.pngLocation:
-			print("TODO: Add Export")
 			self.savepopup = FileSavePopup(save=self.saveFileCallback)
 			self.savepopup.open()
 		else:
 			print("ERR")
-	def __init__(self, **kwargs):
-		super().__init__()
-		self.choosePath = os.path.expanduser("~")
-		self.plistLocation = self.pngLocation = None
-		"""title = Label(text="Texture Pack Creator")
-		title.size_hint=[None, None]
-		title.pos_hint = {'top':0.8}
-		title.size = title.texture_size
-		self.add_widget(title)"""
 
 class TPEditorApp(App):
 	def build(self):
 		root = Builder.load_string(kv_script)
 		return root
-try:
+
+if __name__ == '__main__':
 	app = TPEditorApp()
 	app.run()
-except Exception as e:
-	with open(os.path.expanduser('~')+"/tplog.txt",'w') as f:
-		f.write(traceback.format_exc())
-		f.write(str(e))
-	raise
