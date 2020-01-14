@@ -144,10 +144,14 @@ kv_script = """#:kivy 1.11.1
 			size: 153,50
 			allow_stretch: True
 	BoxLayout:
+		orientation: 'vertical'
 		size_hint: 1,0.8
 		pos_hint: {"top":0.75}
 		ScrollView:
 			scroll_distance: 1
+			bar_width: 10
+			scroll_type: ['bars','content']
+			scroll_wheel_distance: 60
 			TextureBox:
 				#  for debugging
 				id: tp_box
